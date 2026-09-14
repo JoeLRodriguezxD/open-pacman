@@ -10,8 +10,8 @@ const DIRS = {
 };
 const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
-const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
-const GHOST_SPEED = 0.1;    // 1/10 celda/frame
+const PACMAN_SPEED_PER_SEC = 3.75; // antes 0.125 celda/frame (~7.5 celdas/seg)
+const GHOST_SPEED_PER_SEC = 3.0;   // antes 0.1 celda/frame (~6 celdas/seg)
 
 // Paso fijo de simulación, en segundos.
 const FIXED_STEP = 1 / 60;
@@ -40,13 +40,13 @@ function createGame() {
       y: PACMAN_START.y,
       dir: 'left',
       nextDir: null,
-      speed: PACMAN_SPEED,
+      speed: PACMAN_SPEED_PER_SEC,
     },
     ghosts: GHOST_STARTS.map( ( g ) => ( {
       x: g.x,
       y: g.y,
       dir: 'up',
-      speed: GHOST_SPEED,
+      speed: GHOST_SPEED_PER_SEC,
       kind: g.kind,
       exitDelay: EXIT_DELAYS_SEC[ g.kind ] ?? 0,
       exitTimer: 0,
@@ -94,7 +94,7 @@ function wrapTunnel( a, width ) {
   }
 }
 
-function movePacman( game ) {
+function movePacman( game, dt = FIXED_STEP ) {
   const p = game.pacman;
   const grid = game.grid;
   const width = grid[ 0 ].length;
@@ -119,8 +119,8 @@ function movePacman( game ) {
   }
 
   const d = DIRS[ p.dir ];
-  p.x += d.x * p.speed;
-  p.y += d.y * p.speed;
+  p.x += d.x * p.speed * dt;
+  p.y += d.y * p.speed * dt;
   wrapTunnel( p, width );
 }
 
@@ -244,8 +244,8 @@ function moveGhost( game, g, dt = FIXED_STEP ) {
   }
 
   const d = DIRS[ g.dir ];
-  g.x += d.x * g.speed;
-  g.y += d.y * g.speed;
+  g.x += d.x * g.speed * dt;
+  g.y += d.y * g.speed * dt;
   wrapTunnel( g, width );
 }
 
@@ -270,7 +270,7 @@ function collides( a, b ) {
 }
 
 function update( game, dt = FIXED_STEP ) {
-  movePacman( game );
+  movePacman( game, dt );
   game.ghosts.forEach( ( g ) => moveGhost( game, g, dt ) );
 
   for ( const g of game.ghosts ) {
