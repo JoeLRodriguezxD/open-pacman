@@ -10,8 +10,8 @@ const DIRS = {
 };
 const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
-const PACMAN_SPEED_PER_SEC = 3.75; // antes 0.125 celda/frame (~7.5 celdas/seg)
-const GHOST_SPEED_PER_SEC = 3.0;   // antes 0.1 celda/frame (~6 celdas/seg)
+const PACMAN_SPEED_PER_SEC = 4.6875; // 3.75 +25% (antes 0.125 celda/frame, ~7.5 celdas/seg)
+const GHOST_SPEED_PER_SEC = 3.75;   // 3.0 +25% (antes 0.1 celda/frame, ~6 celdas/seg)
 
 // Paso fijo de simulación, en segundos.
 const FIXED_STEP = 1 / 60;
@@ -94,34 +94,86 @@ function wrapTunnel( a, width ) {
   }
 }
 
+// Distancia al proximo centro de celda en la direccion dada.
+// Solo se llama con una direccion cardinal; el otro eje esta clavado.
+function distAlCentro( pos, dir ) {
+  if ( dir > 0 ) return Math.ceil( pos - 1e-9 ) - pos;
+  if ( dir < 0 ) return pos - Math.floor( pos + 1e-9 );
+  return Infinity;
+}
+
+// Avanza al actor sin saltarse centros: si el paso cruza un centro,
+// clava al centro para que la logica de celda (giros, dots, muros)
+// se ejecute siempre, con cualquier velocidad.
+function avanzarConSnap( a, dir, paso, width ) {
+  let restante = paso;
+  let guard = 0;
+  while ( restante > 1e-9 && guard++ < 4 ) {
+    const dx = dir.x || 0;
+    const dy = dir.y || 0;
+    let dist = Infinity;
+    if ( dx !== 0 ) dist = distAlCentro( a.x, dx );
+    else if ( dy !== 0 ) dist = distAlCentro( a.y, dy );
+    else return restante;
+    // En el centro: la distancia al siguiente es 1 celda completa.
+    if ( dist < 1e-9 ) dist = 1;
+    if ( restante >= dist ) {
+      a.x += dx * dist;
+      a.y += dy * dist;
+      restante -= dist;
+      // Clavar para evitar deriva float y envolver el tunel.
+      if ( dx !== 0 ) a.x = Math.round( a.x );
+      if ( dy !== 0 ) a.y = Math.round( a.y );
+      wrapTunnel( a, width );
+      // Hemos llegado a un centro: parar para procesarlo.
+      return restante;
+    }
+    a.x += dx * restante;
+    a.y += dy * restante;
+    restante = 0;
+    wrapTunnel( a, width );
+  }
+  return restante;
+}
+
 function movePacman( game, dt = FIXED_STEP ) {
   const p = game.pacman;
   const grid = game.grid;
   const width = grid[ 0 ].length;
 
-  if ( aligned( p.x ) && aligned( p.y ) ) {
-    p.x = Math.round( p.x );
-    p.y = Math.round( p.y );
+  // Clavar deriva float antes de decidir.
+  if ( aligned( p.x ) ) p.x = Math.round( p.x );
+  if ( aligned( p.y ) ) p.y = Math.round( p.y );
 
-    // Aplicar giro pendiente si es posible.
-    if ( p.nextDir && canMove( grid, p.x, p.y, p.nextDir, 'pacman' ) ) {
-      p.dir = p.nextDir;
-      p.nextDir = null;
+  let restante = p.speed * dt;
+  let guard = 0;
+  while ( restante > 1e-9 && guard++ < 4 ) {
+    const enCentro = p.x === Math.round( p.x ) && p.y === Math.round( p.y );
+    if ( enCentro ) {
+      // Aplicar giro pendiente si es posible.
+      if ( p.nextDir && canMove( grid, p.x, p.y, p.nextDir, 'pacman' ) ) {
+        p.dir = p.nextDir;
+        p.nextDir = null;
+      }
+      // Comer dot.
+      if ( grid[ p.y ] && grid[ p.y ][ p.x ] === 2 ) {
+        grid[ p.y ][ p.x ] = 0;
+        game.score += 10;
+        game.dotsRemaining--;
+      }
+      // Si no puede seguir, se detiene en la celda.
+      if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
     }
-    // Comer dot.
-    if ( grid[ p.y ][ p.x ] === 2 ) {
-      grid[ p.y ][ p.x ] = 0;
-      game.score += 10;
-      game.dotsRemaining--;
-    }
-    // Si no puede seguir, se detiene en la celda.
-    if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
+    const d = DIRS[ p.dir ];
+    if ( !d ) return;
+    const antes = restante;
+    restante = avanzarConSnap( p, d, restante, width );
+    // Si no hubo centro por el camino, se consumio todo: fin.
+    if ( restante <= 1e-9 ) return;
+    // Si avanzarConSnap llego a un centro, el bucle lo procesa.
+    // Si no avanzo nada (dist 0), evitar bucle infinito.
+    if ( Math.abs( restante - antes ) < 1e-12 ) return;
   }
-
-  const d = DIRS[ p.dir ];
-  p.x += d.x * p.speed * dt;
-  p.y += d.y * p.speed * dt;
-  wrapTunnel( p, width );
 }
 
 // Celda objetivo por personalidad (distancia Manhattan en decideGhost).
@@ -236,17 +288,25 @@ function moveGhost( game, g, dt = FIXED_STEP ) {
   const grid = game.grid;
   const width = grid[ 0 ].length;
 
-  if ( aligned( g.x ) && aligned( g.y ) ) {
-    g.x = Math.round( g.x );
-    g.y = Math.round( g.y );
-    decideGhost( game, g );
-    if ( !canMove( grid, g.x, g.y, g.dir, 'ghost' ) ) return;
-  }
+  // Clavar deriva float antes de decidir.
+  if ( aligned( g.x ) ) g.x = Math.round( g.x );
+  if ( aligned( g.y ) ) g.y = Math.round( g.y );
 
-  const d = DIRS[ g.dir ];
-  g.x += d.x * g.speed * dt;
-  g.y += d.y * g.speed * dt;
-  wrapTunnel( g, width );
+  let restante = g.speed * dt;
+  let guard = 0;
+  while ( restante > 1e-9 && guard++ < 4 ) {
+    const enCentro = g.x === Math.round( g.x ) && g.y === Math.round( g.y );
+    if ( enCentro ) {
+      decideGhost( game, g );
+      if ( !canMove( grid, g.x, g.y, g.dir, 'ghost' ) ) return;
+    }
+    const d = DIRS[ g.dir ];
+    if ( !d ) return;
+    const antes = restante;
+    restante = avanzarConSnap( g, d, restante, width );
+    if ( restante <= 1e-9 ) return;
+    if ( Math.abs( restante - antes ) < 1e-12 ) return;
+  }
 }
 
 function resetPositions( game ) {
