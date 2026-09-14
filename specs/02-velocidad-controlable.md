@@ -1,6 +1,6 @@
 # SPEC 02 — Velocidad controlable con delta-tiempo
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** SPEC 01
 > **Date:** 2026-09-13
 > **Objective:** Reducir a la mitad la velocidad de Pac-Man y los fantasmas y hacerla independiente de los fps mediante un bucle de paso fijo con delta-tiempo en `main.js`.

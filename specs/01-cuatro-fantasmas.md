@@ -1,6 +1,6 @@
 # SPEC 01 — Cuatro fantasmas con personalidades arcade
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** Ninguna (primer spec del repo).
 > **Date:** 2026-09-13
 > **Objective:** Dotar al juego de cuatro fantasmas con personalidades arcade diferenciadas, una de ellas persiguiendo agresivamente a Pac-Man.
