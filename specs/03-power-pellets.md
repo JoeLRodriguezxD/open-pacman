@@ -1,6 +1,6 @@
 # SPEC 03 — Power pellets en esquinas con modo asustado
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** SPEC 01, SPEC 02
 > **Date:** 2026-09-14
 > **Objective:** Añadir 4 power pellets en las esquinas del laberinto actual que activan el modo asustado clásico simplificado con fantasmas comestibles.
