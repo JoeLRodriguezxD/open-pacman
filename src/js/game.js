@@ -13,8 +13,11 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
 
-// Retardo de salida de la pen por fantasma, en frames.
-const EXIT_DELAYS = { blinky: 0, pinky: 90, inky: 180, clyde: 270 };
+// Paso fijo de simulación, en segundos.
+const FIXED_STEP = 1 / 60;
+
+// Retardo de salida de la pen por fantasma, en segundos.
+const EXIT_DELAYS_SEC = { blinky: 0, pinky: 1.5, inky: 3, clyde: 4.5 };
 
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
@@ -45,7 +48,7 @@ function createGame() {
       dir: 'up',
       speed: GHOST_SPEED,
       kind: g.kind,
-      exitDelay: EXIT_DELAYS[ g.kind ] ?? 0,
+      exitDelay: EXIT_DELAYS_SEC[ g.kind ] ?? 0,
       exitTimer: 0,
     } ) ),
   };
@@ -224,10 +227,10 @@ function decideGhost( game, g ) {
   }
 }
 
-function moveGhost( game, g ) {
-  // Bloqueo de salida: quieto dentro de la pen hasta cumplir exitDelay.
+function moveGhost( game, g, dt = FIXED_STEP ) {
+  // Bloqueo de salida: quieto dentro de la pen hasta cumplir exitDelay (segundos).
   if ( ( g.exitTimer ?? 0 ) < ( g.exitDelay ?? 0 ) ) {
-    g.exitTimer = ( g.exitTimer ?? 0 ) + 1;
+    g.exitTimer = ( g.exitTimer ?? 0 ) + dt;
     return;
   }
   const grid = game.grid;
@@ -257,7 +260,7 @@ function resetPositions( game ) {
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
     g.kind = GHOST_STARTS[ i ].kind;
-    g.exitDelay = EXIT_DELAYS[ g.kind ] ?? 0;
+    g.exitDelay = EXIT_DELAYS_SEC[ g.kind ] ?? 0;
     g.exitTimer = 0;
   } );
 }
@@ -266,9 +269,9 @@ function collides( a, b ) {
   return Math.abs( a.x - b.x ) < 0.5 && Math.abs( a.y - b.y ) < 0.5;
 }
 
-function update( game ) {
+function update( game, dt = FIXED_STEP ) {
   movePacman( game );
-  game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
+  game.ghosts.forEach( ( g ) => moveGhost( game, g, dt ) );
 
   for ( const g of game.ghosts ) {
     if ( collides( game.pacman, g ) ) {
