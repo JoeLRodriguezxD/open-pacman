@@ -341,6 +341,9 @@ function resetPositions( game ) {
   p.y = PACMAN_START.y;
   p.dir = 'left';
   p.nextDir = null;
+  // Al perder vida se limpia el modo asustado.
+  game.frightTimer = 0;
+  game.frightChain = 0;
   game.ghosts.forEach( ( g, i ) => {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
@@ -364,16 +367,28 @@ function update( game, dt = FIXED_STEP ) {
   movePacman( game, dt );
   game.ghosts.forEach( ( g ) => moveGhost( game, g, dt ) );
 
-  for ( const g of game.ghosts ) {
-    if ( collides( game.pacman, g ) ) {
-      game.lives--;
-      if ( game.lives <= 0 ) {
-        game.state = 'lost';
-        return;
-      }
-      resetPositions( game );
-      break;
+  for ( let i = 0; i < game.ghosts.length; i++ ) {
+    const g = game.ghosts[ i ];
+    if ( !collides( game.pacman, g ) ) continue;
+    // Modo asustado: comer fantasma en cadena y revivirlo en su inicio de la pen.
+    if ( ( game.frightTimer ?? 0 ) > 0 ) {
+      const idx = Math.min( game.frightChain ?? 0, FRIGHT_SCORES.length - 1 );
+      game.score += FRIGHT_SCORES[ idx ];
+      game.frightChain = ( game.frightChain ?? 0 ) + 1;
+      g.x = GHOST_STARTS[ i ].x;
+      g.y = GHOST_STARTS[ i ].y;
+      g.dir = 'up';
+      g.exitDelay = 0;
+      g.exitTimer = 0;
+      continue;
     }
+    game.lives--;
+    if ( game.lives <= 0 ) {
+      game.state = 'lost';
+      return;
+    }
+    resetPositions( game );
+    break;
   }
 
   if ( game.dotsRemaining <= 0 ) game.state = 'won';
