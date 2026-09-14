@@ -13,6 +13,9 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
 
+// Retardo de salida de la pen por fantasma, en frames.
+const EXIT_DELAYS = { blinky: 0, pinky: 90, inky: 180, clyde: 270 };
+
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
 function createGame() {
@@ -42,6 +45,8 @@ function createGame() {
       dir: 'up',
       speed: GHOST_SPEED,
       kind: g.kind,
+      exitDelay: EXIT_DELAYS[ g.kind ] ?? 0,
+      exitTimer: 0,
     } ) ),
   };
 }
@@ -168,6 +173,9 @@ function resetPositions( game ) {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
+    g.kind = GHOST_STARTS[ i ].kind;
+    g.exitDelay = EXIT_DELAYS[ g.kind ] ?? 0;
+    g.exitTimer = 0;
   } );
 }
 
