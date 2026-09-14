@@ -10,8 +10,8 @@ const DIRS = {
 };
 const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
-const PACMAN_SPEED_PER_SEC = 4.6875; // 3.75 +25% (antes 0.125 celda/frame, ~7.5 celdas/seg)
-const GHOST_SPEED_PER_SEC = 3.75;   // 3.0 +25% (antes 0.1 celda/frame, ~6 celdas/seg)
+const PACMAN_SPEED_PER_SEC = 7.32421875; // 5.859375 +25% (antes 0.125 celda/frame, ~7.5 celdas/seg)
+const GHOST_SPEED_PER_SEC = 5.859375;   // 4.6875 +25% (antes 0.1 celda/frame, ~6 celdas/seg)
 
 // Paso fijo de simulación, en segundos.
 const FIXED_STEP = 1 / 60;
