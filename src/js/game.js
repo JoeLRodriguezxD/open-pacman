@@ -19,6 +19,11 @@ const FIXED_STEP = 1 / 60;
 // Retardo de salida de la pen por fantasma, en segundos.
 const EXIT_DELAYS_SEC = { blinky: 0, pinky: 1.5, inky: 3, clyde: 4.5 };
 
+// Power pellets y modo asustado (SPEC 03).
+const FRIGHT_DURATION = 7; // segundos de modo asustado
+const FRIGHT_SCORES = [ 200, 400, 800, 1600 ]; // cadena por comer fantasmas
+const POWER_PELLET_POINTS = 50;
+
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
 function createGame() {
@@ -34,6 +39,8 @@ function createGame() {
     score: 0,
     lives: 3,
     dotsRemaining: dots,
+    frightTimer: 0,
+    frightChain: 0,
     grid,
     pacman: {
       x: PACMAN_START.x,
@@ -160,6 +167,17 @@ function movePacman( game, dt = FIXED_STEP ) {
         grid[ p.y ][ p.x ] = 0;
         game.score += 10;
         game.dotsRemaining--;
+      }
+      // Comer power pellet: activa modo asustado e invierte fantasmas fuera de la pen.
+      if ( grid[ p.y ] && grid[ p.y ][ p.x ] === 4 ) {
+        grid[ p.y ][ p.x ] = 0;
+        game.score += POWER_PELLET_POINTS;
+        game.dotsRemaining--;
+        game.frightTimer = FRIGHT_DURATION;
+        game.frightChain = 0;
+        for ( const g of game.ghosts ) {
+          if ( !isInPen( g ) && OPPOSITE[ g.dir ] ) g.dir = OPPOSITE[ g.dir ];
+        }
       }
       // Si no puede seguir, se detiene en la celda.
       if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
