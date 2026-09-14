@@ -277,6 +277,12 @@ function decideGhost( game, g ) {
     }
   }
 
+  // Modo asustado: IA aleatoria sin-reversa (choices ya excluye el giro de 180).
+  if ( ( game.frightTimer ?? 0 ) > 0 ) {
+    g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
+    return;
+  }
+
   if ( g.kind === 'blinky' || g.kind === 'pinky' || g.kind === 'inky' || g.kind === 'clyde' ) {
     const t = ghostTarget( game, g );
     let best = choices[ 0 ];
@@ -310,7 +316,9 @@ function moveGhost( game, g, dt = FIXED_STEP ) {
   if ( aligned( g.x ) ) g.x = Math.round( g.x );
   if ( aligned( g.y ) ) g.y = Math.round( g.y );
 
-  let restante = g.speed * dt;
+  // Modo asustado: fantasmas a ~50% velocidad.
+  const fright = ( game.frightTimer ?? 0 ) > 0 ? 0.5 : 1;
+  let restante = g.speed * fright * dt;
   let guard = 0;
   while ( restante > 1e-9 && guard++ < 4 ) {
     const enCentro = g.x === Math.round( g.x ) && g.y === Math.round( g.y );
@@ -348,6 +356,11 @@ function collides( a, b ) {
 }
 
 function update( game, dt = FIXED_STEP ) {
+  // Temporizador de modo asustado: solo logica con dt, nunca con frame visual.
+  if ( ( game.frightTimer ?? 0 ) > 0 ) {
+    game.frightTimer -= dt;
+    if ( game.frightTimer < 0 ) game.frightTimer = 0;
+  }
   movePacman( game, dt );
   game.ghosts.forEach( ( g ) => moveGhost( game, g, dt ) );
 
