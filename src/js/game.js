@@ -125,6 +125,27 @@ function ghostTarget( game, g ) {
     const d = DIRS[ p.dir ] || { x: 0, y: 0 };
     return { x: px + d.x * 4, y: py + d.y * 4 };
   }
+  if ( g.kind === 'inky' ) {
+    // Flanqueador: espejo de blinky respecto a 2 celdas delante de Pac-Man.
+    const d = DIRS[ p.dir ] || { x: 0, y: 0 };
+    const ax = px + d.x * 2;
+    const ay = py + d.y * 2;
+    const b = game.ghosts.find( ( gh ) => gh.kind === 'blinky' );
+    if ( !b ) {
+      // Fallback: sin blinky, actua como pinky.
+      const dp = DIRS[ p.dir ] || { x: 0, y: 0 };
+      return { x: px + dp.x * 4, y: py + dp.y * 4 };
+    }
+    return { x: ax * 2 - Math.round( b.x ), y: ay * 2 - Math.round( b.y ) };
+  }
+  if ( g.kind === 'clyde' ) {
+    // Timido: persigue como blinky lejos (>8 celdas), si no a su esquina.
+    const gx = Math.round( g.x );
+    const gy = Math.round( g.y );
+    const dist = Math.hypot( px - gx, py - gy );
+    if ( dist > 8 ) return { x: px, y: py };
+    return { x: 0, y: 30 }; // esquina abajo-izquierda
+  }
   // blinky: perseguidor agresivo, objetivo directo a Pac-Man.
   return { x: px, y: py };
 }
@@ -138,7 +159,7 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  if ( g.kind === 'blinky' || g.kind === 'pinky' ) {
+  if ( g.kind === 'blinky' || g.kind === 'pinky' || g.kind === 'inky' || g.kind === 'clyde' ) {
     const t = ghostTarget( game, g );
     let best = choices[ 0 ];
     let bestDist = Infinity;
