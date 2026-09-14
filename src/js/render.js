@@ -66,12 +66,22 @@ function drawDoor( ctx, grid ) {
   ctx.stroke();
 }
 
-function drawDots( ctx, grid ) {
-  ctx.fillStyle = DOT_COLOR;
+function drawDots( ctx, grid, frame ) {
   for ( let y = 0; y < grid.length; y++ ) {
     for ( let x = 0; x < grid[ 0 ].length; x++ ) {
-      if ( grid[ y ][ x ] !== 2 ) continue;
+      const v = grid[ y ][ x ];
+      if ( v !== 2 && v !== 4 ) continue;
       const { cx, cy } = cellCenter( x, y );
+      // Power pellet grande con parpadeo ~2Hz (solo visual, por frame).
+      if ( v === 4 ) {
+        if ( Math.floor( ( frame ?? 0 ) / 15 ) % 2 !== 0 ) continue;
+        ctx.fillStyle = DOT_COLOR;
+        ctx.beginPath();
+        ctx.arc( cx, cy, 6, 0, Math.PI * 2 );
+        ctx.fill();
+        continue;
+      }
+      ctx.fillStyle = DOT_COLOR;
       ctx.beginPath();
       ctx.arc( cx, cy, 2.5, 0, Math.PI * 2 );
       ctx.fill();
@@ -156,9 +166,18 @@ function draw( ctx, game, frame ) {
 
   drawWalls( ctx, grid );
   drawDoor( ctx, grid );
-  drawDots( ctx, grid );
+  drawDots( ctx, grid, frame );
   drawPacman( ctx, game.pacman, frame );
-  game.ghosts.forEach( ( g, i ) => drawGhost( ctx, g, GHOST_COLORS[ i ] || '#ff0000' ) );
+  // Modo asustado: fantasmas azules con parpadeo blanco los ultimos 2 s.
+  const fright = ( game.frightTimer ?? 0 ) > 0;
+  game.ghosts.forEach( ( g, i ) => {
+    let color = GHOST_COLORS[ i ] || '#ff0000';
+    if ( fright ) {
+      color = '#2121ff';
+      if ( game.frightTimer <= 2 && Math.floor( ( frame ?? 0 ) / 15 ) % 2 !== 0 ) color = '#ffffff';
+    }
+    drawGhost( ctx, g, color );
+  } );
   drawHUD( ctx, game, W );
 }
 
