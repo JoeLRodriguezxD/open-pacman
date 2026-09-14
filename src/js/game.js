@@ -75,6 +75,12 @@ function canMove( grid, x, y, dir, actor ) {
   const ty = y + d.y;
   // Tunel: salir por un borde en la fila del tunel siempre es valido.
   if ( ty === TUNNEL_ROW && ( tx < 0 || tx >= grid[ 0 ].length ) ) return true;
+  // Puerta de la pen solo de salida: los fantasmas no bajan a la puerta ni desde ella.
+  if ( actor === 'ghost' && dir === 'down' ) {
+    const cur = grid[ y ] && grid[ y ][ x ];
+    const nxt = grid[ ty ] && grid[ ty ][ tx ];
+    if ( cur === 3 || nxt === 3 ) return false;
+  }
   return !isWall( grid, tx, ty, actor );
 }
 
@@ -150,6 +156,13 @@ function ghostTarget( game, g ) {
   return { x: px, y: py };
 }
 
+// Dentro de la pen (rect interior x 11-16, y 13-15)?
+function isInPen( g ) {
+  const rx = Math.round( g.x );
+  const ry = Math.round( g.y );
+  return rx >= 11 && rx <= 16 && ry >= 13 && ry <= 15;
+}
+
 function decideGhost( game, g ) {
   const grid = game.grid;
 
@@ -158,6 +171,38 @@ function decideGhost( game, g ) {
   );
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
+
+  // Salida forzada: dentro de la pen, centrar en x 13-14 y subir a la puerta.
+  if ( isInPen( g ) ) {
+    const rx = Math.round( g.x );
+    let want = 'up';
+    if ( rx < 13 ) want = 'right';
+    else if ( rx > 14 ) want = 'left';
+    if ( choices.includes( want ) ) {
+      g.dir = want;
+      return;
+    }
+    // Si el camino directo esta bloqueado, cualquier salida valida.
+    if ( choices.includes( 'up' ) ) {
+      g.dir = 'up';
+      return;
+    }
+  }
+
+  // Sobre la puerta (tile 3): seguir subiendo, nunca bajar.
+  const rx0 = Math.round( g.x );
+  const ry0 = Math.round( g.y );
+  if ( grid[ ry0 ] && grid[ ry0 ][ rx0 ] === 3 ) {
+    if ( choices.includes( 'up' ) ) {
+      g.dir = 'up';
+      return;
+    }
+    const noDown = choices.filter( ( dir ) => dir !== 'down' );
+    if ( noDown.length ) {
+      g.dir = noDown[ 0 ];
+      return;
+    }
+  }
 
   if ( g.kind === 'blinky' || g.kind === 'pinky' || g.kind === 'inky' || g.kind === 'clyde' ) {
     const t = ghostTarget( game, g );
@@ -180,6 +225,11 @@ function decideGhost( game, g ) {
 }
 
 function moveGhost( game, g ) {
+  // Bloqueo de salida: quieto dentro de la pen hasta cumplir exitDelay.
+  if ( ( g.exitTimer ?? 0 ) < ( g.exitDelay ?? 0 ) ) {
+    g.exitTimer = ( g.exitTimer ?? 0 ) + 1;
+    return;
+  }
   const grid = game.grid;
   const width = grid[ 0 ].length;
 
